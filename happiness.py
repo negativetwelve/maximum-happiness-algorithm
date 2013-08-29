@@ -18,6 +18,10 @@ class Section(object):
         self.ta = ta
         self.las = []
 
+    @property
+    def can_have_more_las(self):
+        return len(self.las) < self.num_allowed
+
 
 class LabAssistant(object):
 
@@ -88,18 +92,21 @@ class LabAssistant(object):
 
     def add_labs(self, labs):
         for lab in labs:
-            if self.wants_more_labs and self.wants_lab(lab):
+            if self.wants_more_labs and self.wants_lab(lab) and lab.can_have_more_las:
                 self.labs.append(lab)
+                lab.las.append(self)
 
     def add_discs(self, discs):
         for disc in discs:
-            if self.wants_more_discs and self.wants_disc(disc):
+            if self.wants_more_discs and self.wants_disc(disc) and disc.can_have_more_las:
                 self.discussions.append(disc)
+                disc.las.append(self)
 
     def add_ohs(self, ohs):
         for oh in ohs:
-            if self.wants_more_office_hours and self.wants_oh(oh):
+            if self.wants_more_office_hours and self.wants_oh(oh) and oh.can_have_more_las:
                 self.office_hours.append(oh)
+                oh.las.append(self)
 
 def int_or_zero(num):
     if num == '':
@@ -173,7 +180,7 @@ def maximize(lab_assistants, labs, discs, ohs):
 def make_labs(lab):
     sections = []
     for ta in lab_to_ta[lab]:
-        sections.append(Section(lab, 5, ta))
+        sections.append(Section(lab, 6, ta))
     return sections
 
 def make_discs(disc):
@@ -195,7 +202,7 @@ def map_tas(filename):
         for line in output:
             type_of_section, ta, section_time = line
             mappings[type_of_section][section_time].append(ta)
-    return mappings['lab'], mappings['disc'], mappings['oh']
+    return mappings['lab'], mappings['disc'], mappings['ohs']
 
 def flatten(unflattened):
     items = []
@@ -216,7 +223,8 @@ if __name__ == '__main__':
     ohs = flatten(list(map(make_ohs, ohs)))
     total_happy, labs, discs, ohs = maximize(la, labs, discs, ohs)
 
-    for lab, las in labs.iteritems():
-        print lab.name, las
-        print ''
+    items = sorted(ohs.iteritems(), key=lambda item: item[0].name)
+
+    for lab, las in items:
+        print lab.name + ',' + ','.join(las)
 
