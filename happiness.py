@@ -10,6 +10,15 @@ MAX_NUM_PER_LAB = 5
 MAX_NUM_PER_DISC = 1
 MAX_NUM_PER_OH = 3
 
+class Section(object):
+
+    def __init__(self, name, num_allowed, ta):
+        self.name = name
+        self.num_allowed = num_allowed
+        self.ta = ta
+        self.las = []
+
+
 class LabAssistant(object):
 
     def __init__(self, name, first_choices, second_choices, cant_make, preferred_tas, num_labs, num_discussions, num_office_hours):
@@ -69,14 +78,13 @@ class LabAssistant(object):
         return total
 
     def wants_lab(self, lab):
-        return lab not in self.labs and lab in self.first_choices
+        return lab not in self.labs and lab.name in self.first_choices
 
     def wants_disc(self, disc):
-        return disc not in self.discussions and disc in self.first_choices
+        return disc not in self.discussions and disc.name in self.first_choices
 
     def wants_oh(self, oh):
-        return oh not in self.office_hours and oh in self.first_choices
-
+        return oh not in self.office_hours and oh.name in self.first_choices
 
     def add_labs(self, labs):
         for lab in labs:
@@ -162,9 +170,53 @@ def maximize(lab_assistants, labs, discs, ohs):
 
     return total_happy, labs, discs, ohs
 
+def make_labs(lab):
+    sections = []
+    for ta in lab_to_ta[lab]:
+        sections.append(Section(lab, 5, ta))
+    return sections
+
+def make_discs(disc):
+    discussions = []
+    for ta in disc_to_ta[disc]:
+        discussions.append(Section(disc, 2, ta))
+    return discussions
+
+def make_ohs(oh):
+    ohs = []
+    for ta in oh_to_ta[oh]:
+        ohs.append(Section(oh, 4, ta))
+    return ohs
+
+def map_tas(filename):
+    mappings = defaultdict(lambda: defaultdict(list))
+    with open(filename, 'rU') as filename:
+        output = csv.reader(filename, delimiter=',')
+        for line in output:
+            type_of_section, ta, section_time = line
+            mappings[type_of_section][section_time].append(ta)
+    return mappings['lab'], mappings['disc'], mappings['oh']
+
+def flatten(unflattened):
+    items = []
+    for item in unflattened:
+        if isinstance(item, list):
+            items.extend(flatten(item))
+        else:
+            items.append(item)
+    return items
+
 if __name__ == '__main__':
+    lab_to_ta, disc_to_ta, oh_to_ta = map_tas('sections.csv')
+
+
     la, (labs, discs, ohs) = read_file('responses.csv')
+    labs = flatten(list(map(make_labs, labs)))
+    discs = flatten(list(map(make_discs, discs)))
+    ohs = flatten(list(map(make_ohs, ohs)))
     total_happy, labs, discs, ohs = maximize(la, labs, discs, ohs)
 
     for lab, las in labs.iteritems():
-        print lab, len(las)
+        print lab.name, las
+        print ''
+
